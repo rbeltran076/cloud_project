@@ -1,52 +1,70 @@
 import streamlit as st
-import time
+from azure.iot.device import IoTHubDeviceClient, Message
 
+# HEAD
 st.set_page_config(
-    page_title="Valve Dashboard",
+    page_title="Pipe Dashboard",
     page_icon="👋",
 )
 
-# Function to send command to the backend
-def send_valve_command(valveId, command):
-    # Add logic to send commands to backend and Azure IoT Hub
-    pass
+pipeCS = {
+    "pipe1": "HostName=cloud-final-project.azure-devices.net;DeviceId=valve-1;SharedAccessKey=d8LOzgbhgU31Z7k09ILmTXADBp1XHDYy/AIoTKtXyA4=",
+    "pipe2": "HostName=cloud-final-project.azure-devices.net;DeviceId=valve-2;SharedAccessKey=t6ZwKzDn8K/iGgyJvktZPCA/AB2R4KBOLAIoTONAnvQ=",
+    "pipe3": "HostName=cloud-final-project.azure-devices.net;DeviceId=valve-3;SharedAccessKey=a9Erx9/+KhWOm/mAWRzeE0fiSVFyrNG6GAIoTNPCCo4=",
+    "pipe4": "HostName=cloud-final-project.azure-devices.net;DeviceId=valve-4;SharedAccessKey=y2PSh29338hh8gtrK8PTEqfp5dvaGH4mjAIoTKZ/CWY="
+    }
 
-def generate_temporary_success(message, seconds):
-    successContainer = st.success(message)
-    time.sleep(seconds)
-    successContainer.empty()
-
-st.title('Valve Control Dashboard')
-
-# valveUpdate variable to avoid a specific bug
-valveUpdate = ''
-
-valves = {
-    'Valve 1': 'closed',
-    'Valve 2': 'closed',
-    'Valve 3': 'closed',
-    'Valve 4': 'closed',
+pipeStates = {
+    'pipe1': 'closed',
+    'pipe2': 'closed',
+    'pipe3': 'closed',
+    'pipe4': 'closed'
 }
 
-# Make columns
+def message_to_hub(whichPipe: str, condition: str):
+    # connecting to IoT hub directly from Streamlit
+    client = IoTHubDeviceClient.create_from_connection_string(pipeCS[whichPipe])
+    client.connect()
+
+    # constructing the message
+    message_body = {
+        "condition": condition
+    }
+
+    # sending message
+    client.send_message(Message(str(message_body)))
+
+    st.success(f"Message {message_body} sent to {whichPipe}")
+
+    client.disconnect()
+
+
+# BODY
+# tab title
+st.title('Pipe Control Dashboard')
+# Make columns for UX design
 col1, col2 = st.columns((1, 1))
 
-# LEFT COLUMN: The selectbox and Open / Close buttons
+
+# LEFT COL. The selectbox and Open / Close buttons
 with col1:
-    valveId = st.selectbox('Select Valve', ['Valve 1', 'Valve 2', 'Valve 3', 'Valve 4'])
-    btnOpenValve = st.button('Open Valve')
-    btnCloseValve = st.button('Close Valve')
+    pipeId = st.selectbox('Select Pipe', list(pipeStates.keys()))
+    # st.markdown(f'**State of {pipeId}: {pipeStates[pipeId]}**')
 
-    if btnOpenValve:
-        send_valve_command(valveId, 'open')
-        valves[valveId] = 'open'
 
-    if btnCloseValve:
-        send_valve_command(valveId, 'closed')
-        valves[valveId] = 'closed'
-
-# RIGHT COLUMN: Valve status and success message
+# RIGHT COL. pipe status and success message
 with col2:
-    st.markdown(f'**Status: {valves[valveId]}**')
-    valveUpdate = f'The valve is {valves[valveId]}'
-    generate_temporary_success(valveUpdate, 1)
+    # Buttons for opening and closing the pipe
+    btnOpenPipe = st.button('Open pipe')
+    btnClosePipe = st.button('Close pipe')
+
+    # Check if a button was pressed
+    if btnOpenPipe or btnClosePipe:
+        newState = 'open' if btnOpenPipe else 'closed'
+        message_to_hub(pipeId, newState)
+        pipeStates[pipeId] = newState
+
+    # Display success message if available
+    if 'pipeUpdate' in st.session_state:
+        st.success(st.session_state['pipeUpdate'])
+        del st.session_state['pipeUpdate']  # Clear the success message after displaying
