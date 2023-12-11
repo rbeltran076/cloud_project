@@ -5,7 +5,7 @@ import json
 
 # HEAD
 st.set_page_config(
-    page_title="Pipe Dashboard",
+    page_title="Pipe Valve Dashboard",
     page_icon="👋",
 )
 
